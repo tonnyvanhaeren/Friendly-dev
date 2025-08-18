@@ -8,7 +8,15 @@ export function meta({}: Route.MetaArgs) {
 }
 
 export default function Home() {
-  console.log('home page');
+  // const now = new Date().toISOString();
+
+  // if (typeof window === 'undefined') {
+  //   //server side
+  //   console.log('server render at:', now);
+  // } else {
+  //   console.log('Client Hydra at:', now);
+  // }
+
   return (
     <section>
       <h2>My App</h2>
