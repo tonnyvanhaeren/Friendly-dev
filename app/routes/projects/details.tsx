@@ -1,28 +1,38 @@
 import type { Route } from './+types/details';
-import type { Project } from '~/types';
+import type { Project, StrapiProject, StrapiResponse } from '~/types';
 import { FaArrowLeft } from 'react-icons/fa';
 import { Link } from 'react-router';
 
-export async function clientLoader({
-  request,
-  params,
-}: Route.ClientActionArgs): Promise<Project> {
+export async function loader({ request, params }: Route.LoaderArgs) {
   const res = await fetch(
-    `${import.meta.env.VITE_API_URL}/projects/${params.id}`
+    `${import.meta.env.VITE_API_URL}/projects?filters[documentId][$eq]=${params.id}&populate=*`
   );
 
   if (!res.ok) throw new Response('Project not found', { status: 404 });
 
-  const project: Project = await res.json();
-  return project;
-}
+  const json: StrapiResponse<StrapiProject> = await res.json();
 
-export function HydrateFallBack() {
-  return <div>Loading ...</div>;
+  const item = json.data[0];
+
+  const project: Project = {
+    id: item.id,
+    documentId: item.documentId,
+    title: item.title,
+    description: item.description,
+    image: item.image?.url
+      ? `${import.meta.env.VITE_STRAPI_URL}${item.image.url}`
+      : '/images/no-image.png',
+    url: item.url,
+    date: item.date,
+    category: item.category,
+    featured: item.featured,
+  };
+
+  return { project };
 }
 
 const ProjectDetailsPage = ({ loaderData }: Route.ComponentProps) => {
-  const project = loaderData;
+  const { project } = loaderData;
 
   return (
     <>
@@ -47,7 +57,7 @@ const ProjectDetailsPage = ({ loaderData }: Route.ComponentProps) => {
             {project.title}
           </h1>
           <p className='text-gray-300 text-sm mb-4'>
-            {new Date(project.date).toLocaleDateString()} • {project.category}
+            {new Date(project.date).toDateString()} • {project.category}
           </p>
           <p className='text-gray-200 mb-6'>{project.description}</p>
 
