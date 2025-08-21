@@ -1,36 +1,43 @@
 import ReactMarkdown from 'react-markdown';
 import type { Route } from './+types/details';
-import type { Post } from '~/types';
+import type { Post, StrapiPost, StrapiResponse } from '~/types';
 import { Link } from 'react-router';
 
 export async function loader({ request, params }: Route.LoaderArgs) {
   const { slug } = params;
-  const url = new URL('/posts-meta.json', request.url);
-  const res = await fetch(url.href);
+
+  const res = await fetch(
+    `${import.meta.env.VITE_API_URL}/posts?filters[slug][$eq]=${slug}&populate=image`
+  );
 
   if (!res.ok) throw new Error('Failed to load posts');
 
-  const index = await res.json();
+  const json: StrapiResponse<StrapiPost> = await res.json();
 
-  const postMeta = index.find((post: Post) => post.slug === slug);
+  if (!json.data.length) throw new Response('Post Not Found', { status: 404 });
 
-  if (!postMeta) throw new Response('Post Not Found', { status: 404 });
+  const item = json.data[0];
+  const post = {
+    id: item.id,
+    slug: item.slug,
+    excerpt: item.excerpt,
+    title: item.title,
+    date: item.date,
+    body: item.body,
+    image: item.image?.url ? `${item.image.url}` : '/images/no-image.png',
+  };
 
-  // Dynamically get raw markdown data
-  const markdown = await import(`../../posts/${slug}.md?raw`);
-
-  return { post: postMeta, markdown: markdown.default };
+  return { post };
 }
 
 type BlogPostDetailsPageProps = {
   loaderData: {
     post: Post;
-    markdown: string;
   };
 };
 
 const BlogPostDetailsPage = ({ loaderData }: BlogPostDetailsPageProps) => {
-  const { post, markdown } = loaderData;
+  const { post } = loaderData;
 
   return (
     <div className='max-w-3xl mx-auto px-6 py-12 bg-gray-900'>
@@ -46,7 +53,7 @@ const BlogPostDetailsPage = ({ loaderData }: BlogPostDetailsPageProps) => {
       />
 
       <div className='prose prose-invert max-w-none mb-12'>
-        <ReactMarkdown>{markdown}</ReactMarkdown>
+        <ReactMarkdown>{post.body}</ReactMarkdown>
       </div>
 
       <Link
